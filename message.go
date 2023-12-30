@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hnimtadd/dpoker/encoding"
+	"github.com/hnimtadd/p2p/encoding"
 )
 
 type (

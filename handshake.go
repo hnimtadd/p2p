@@ -5,8 +5,6 @@ import (
 	"encoding/gob"
 	"log"
 	"net"
-
-	"github.com/hnimtadd/dpoker/network/utils"
 )
 
 type handshake struct {
@@ -36,12 +34,12 @@ func TCPHandshake(fromNode Transport, peer net.Conn) (NodeInformation, error) {
 		FromID: fromNode.Addr().(string),
 	}
 	synBytes := handshakeToBytes(&syn)
-	err := utils.Write(peer, synBytes)
+	err := Write(peer, synBytes)
 	if err != nil {
 		return NodeInformation{}, err
 	}
 
-	saBytes, err := utils.Read(peer)
+	saBytes, err := Read(peer)
 	if err != nil {
 		return NodeInformation{}, err
 	}
@@ -52,7 +50,7 @@ func TCPHandshake(fromNode Transport, peer net.Conn) (NodeInformation, error) {
 }
 
 func TCPHandshakeReply(peer net.Conn, toNode Transport) (NodeInformation, error) {
-	sBytes, err := utils.Read(peer)
+	sBytes, err := Read(peer)
 	if err != nil {
 		return NodeInformation{}, err
 	}
@@ -63,7 +61,7 @@ func TCPHandshakeReply(peer net.Conn, toNode Transport) (NodeInformation, error)
 	}
 
 	saBytes := handshakeToBytes(&saHandkshake)
-	if err := utils.Write(peer, saBytes); err != nil {
+	if err := Write(peer, saBytes); err != nil {
 		return NodeInformation{}, err
 	}
 
