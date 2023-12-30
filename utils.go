@@ -1,4 +1,4 @@
-package utils
+package p2p
 
 import (
 	"fmt"
