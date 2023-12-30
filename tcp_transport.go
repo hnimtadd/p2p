@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	ErrPeerExisted = errors.New("peer already connected")
-	ErrPeerInvalid = errors.New("peer with type invalid")
+	ErrPeerExisted    = errors.New("duplicate peer")
+	ErrPeerInvalid    = errors.New("peer with type invalid")
+	ErrPeerNotExisted = errors.New("given peer not found")
 )
 
 // ################### TRANSPORT ########################
@@ -91,15 +92,35 @@ func (t *TCPTransport) RemovePeer(peer Peer) error {
 	return nil
 }
 
+// Broadcast wraps payload in RPC and send to all peer
 func (t *TCPTransport) Broadcast(payload []byte) error {
 	t.mu.Lock()
+	rpc := &RPC{
+		From:    t.Addr(),
+		Payload: payload,
+	}
 	defer t.mu.Unlock()
 	for _, peer := range t.peers {
-		if err := peer.Accept(payload); err != nil {
+		if err := peer.Accept(rpc.Bytes()); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// Send wrap payload in RPC and send to given peer
+func (t *TCPTransport) Send(to NetAddr, payload []byte) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	peer, ok := t.peers[to]
+	if !ok {
+		return ErrPeerNotExisted
+	}
+	rpc := &RPC{
+		From:    t.Addr(),
+		Payload: payload,
+	}
+	return peer.Accept(rpc.Bytes())
 }
 
 // TODO: maybe add handshake protocol after registering plain connection
@@ -183,6 +204,8 @@ func (t *TCPTransport) connect(p *TCPPeer) error {
 }
 
 func (t *TCPTransport) disconect(p *TCPPeer) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	go p.Stop()
 	delete(t.peers, p.Addr())
 }
