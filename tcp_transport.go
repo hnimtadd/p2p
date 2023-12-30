@@ -10,7 +10,10 @@ import (
 	"time"
 )
 
-var ErrPeerExisted = errors.New("peer already connected")
+var (
+	ErrPeerExisted = errors.New("peer already connected")
+	ErrPeerInvalid = errors.New("peer with type invalid")
+)
 
 // ################### TRANSPORT ########################
 
@@ -57,6 +60,35 @@ func (t *TCPTransport) Addr() NetAddr {
 
 func (t *TCPTransport) Start() {
 	go t.Loop()
+}
+
+func (t *TCPTransport) Peers() []*PeerInfo {
+	peerInfos := []*PeerInfo{}
+	for _, peer := range t.peers {
+		peerInfos = append(peerInfos, peer.Info())
+	}
+	return peerInfos
+}
+
+func (t *TCPTransport) PeerCount() int {
+	return len(t.peers)
+}
+
+func (t *TCPTransport) AddPeer(peer Peer) error {
+	tcpPeer, ok := peer.(*TCPPeer)
+	if !ok {
+		return ErrPeerInvalid
+	}
+	return t.connect(tcpPeer)
+}
+
+func (t *TCPTransport) RemovePeer(peer Peer) error {
+	tcpPeer, ok := peer.(*TCPPeer)
+	if !ok {
+		return ErrPeerInvalid
+	}
+	t.disconect(tcpPeer)
+	return nil
 }
 
 func (t *TCPTransport) Broadcast(payload []byte) error {
@@ -170,13 +202,13 @@ type TCPPeer struct {
 
 func NewTCPPeer(
 	conn net.Conn,
-	addr NetAddr,
+	nodeId string,
 	inbound bool,
 	rpcCh chan<- *RPC,
 	infoCh chan<- string,
 ) (*TCPPeer, error) {
 	peer := &TCPPeer{
-		addr:    addr,
+		nodeID:  nodeId,
 		rpcCh:   rpcCh,
 		infoCh:  infoCh,
 		inbound: inbound,
@@ -189,6 +221,12 @@ func NewTCPPeer(
 
 func (p *TCPPeer) Addr() NetAddr {
 	return NetAddr(p.nodeID)
+}
+
+func (p *TCPPeer) Info() *PeerInfo {
+	return &PeerInfo{
+		NodeID: p.nodeID,
+	}
 }
 
 // Accept send plain payload to conn, rpc shold be encoded to bytes before send
