@@ -248,6 +248,7 @@ func (p *TCPPeer) Addr() NetAddr {
 
 func (p *TCPPeer) Info() *PeerInfo {
 	return &PeerInfo{
+		Addr:   p.Addr(),
 		NodeID: p.nodeID,
 	}
 }
