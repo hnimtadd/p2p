@@ -22,6 +22,8 @@ type Transport interface {
 type Peer interface {
 	Addr() NetAddr
 	Info() *PeerInfo
+	Start()
+	Stop()
 	// Accept write given payload into this peer's connection.
 	Accept(payload []byte) error
 }

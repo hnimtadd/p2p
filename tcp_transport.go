@@ -7,7 +7,6 @@ import (
 	"net"
 	"sync"
 	"syscall"
-	"time"
 )
 
 var (
@@ -177,16 +176,6 @@ func (t *TCPTransport) Loop() {
 	}
 }
 
-func (t *TCPTransport) handlePeer(peer *TCPPeer, ticker time.Ticker) {
-	// errCh := make(chan error, 1)
-	// go HandleTCPPing(peer, ticker, errCh)
-	//
-	// err := <-errCh
-	// fmt.Println("cannot ping")
-	// t.disconect(peer)
-	// t.notiCh <- fmt.Sprintf("tcp transport: cannot ping to %s, err: %v", peer.Addr(), err)
-}
-
 func (t *TCPTransport) connect(p *TCPPeer) error {
 	t.mu.Lock()
 	_, ok := t.peers[p.Addr()]
@@ -198,8 +187,6 @@ func (t *TCPTransport) connect(p *TCPPeer) error {
 	t.peers[p.Addr()] = p
 	t.mu.RUnlock()
 	t.peerCh <- p
-	go p.Start()
-	go t.handlePeer(p, *time.NewTicker(time.Second * 60))
 	return nil
 }
 
@@ -275,6 +262,7 @@ func (p TCPPeer) String() string {
 	return fmt.Sprintf("[NODE] addr: %s, direction: %s", p.Addr(), inbound)
 }
 
+// start  should be call after peer processed and we want to work with peer
 func (p *TCPPeer) Start() {
 	go p.loop()
 }
