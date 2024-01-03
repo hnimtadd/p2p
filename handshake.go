@@ -34,12 +34,12 @@ func TCPHandshake(fromNode Transport, peer net.Conn) (NodeInformation, error) {
 		FromID: fromNode.Addr().(string),
 	}
 	synBytes := handshakeToBytes(&syn)
-	err := Write(peer, synBytes)
+	err := Send(peer, synBytes)
 	if err != nil {
 		return NodeInformation{}, err
 	}
 
-	saBytes, err := Read(peer)
+	saBytes, err := Receive(peer)
 	if err != nil {
 		return NodeInformation{}, err
 	}
@@ -50,7 +50,7 @@ func TCPHandshake(fromNode Transport, peer net.Conn) (NodeInformation, error) {
 }
 
 func TCPHandshakeReply(peer net.Conn, toNode Transport) (NodeInformation, error) {
-	sBytes, err := Read(peer)
+	sBytes, err := Receive(peer)
 	if err != nil {
 		return NodeInformation{}, err
 	}
@@ -61,7 +61,7 @@ func TCPHandshakeReply(peer net.Conn, toNode Transport) (NodeInformation, error)
 	}
 
 	saBytes := handshakeToBytes(&saHandkshake)
-	if err := Write(peer, saBytes); err != nil {
+	if err := Send(peer, saBytes); err != nil {
 		return NodeInformation{}, err
 	}
 

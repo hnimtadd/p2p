@@ -7,7 +7,6 @@ import (
 	"net"
 	"sync"
 	"syscall"
-	"time"
 )
 
 var (
@@ -246,16 +245,14 @@ func (p *TCPPeer) Info() *PeerInfo {
 
 // Accept send plain payload to conn, rpc shold be encoded to bytes before send
 func (p *TCPPeer) Accept(payload []byte) error {
-	if err := p.conn.SetWriteDeadline(time.Now().Add(time.Second * 5)); err != nil {
-		return err
-	}
-	n, err := p.conn.Write(payload)
-	if err != nil {
-		return err
-	}
-	if n != len(payload) {
-		return fmt.Errorf("peer: given message with len %d, written %d", len(payload), n)
-	}
+	return Send(p.conn, payload)
+	// n, err := p.conn.Write(payload)
+	// if err != nil {
+	// 	return err
+	// }
+	// if n != len(payload) {
+	// 	return fmt.Errorf("peer: given message with len %d, written %d", len(payload), n)
+	// }
 	return nil
 }
 
@@ -279,11 +276,10 @@ func (p *TCPPeer) Stop() {
 }
 
 func (p *TCPPeer) loop() {
-	buf := make([]byte, 1024)
 	defer p.conn.Close()
 loop:
 	for {
-		n, err := p.conn.Read(buf)
+		payload, err := Receive(p.conn)
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNABORTED) {
 				break loop
@@ -293,7 +289,7 @@ loop:
 		}
 		// buf[:n] is encoded rpc
 		rpc := new(RPC)
-		if err := rpc.FromBytes(buf[:n]); err != nil {
+		if err := rpc.FromBytes(payload); err != nil {
 			continue
 		}
 		p.rpcCh <- rpc
