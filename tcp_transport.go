@@ -246,7 +246,7 @@ func (p *TCPPeer) Info() *PeerInfo {
 
 // Accept send plain payload to conn, rpc shold be encoded to bytes before send
 func (p *TCPPeer) Accept(payload []byte) error {
-	if err := p.conn.SetDeadline(time.Now().Add(time.Second * 5)); err != nil {
+	if err := p.conn.SetWriteDeadline(time.Now().Add(time.Second * 5)); err != nil {
 		return err
 	}
 	n, err := p.conn.Write(payload)
