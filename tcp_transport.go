@@ -7,6 +7,7 @@ import (
 	"net"
 	"sync"
 	"syscall"
+	"time"
 )
 
 var (
@@ -119,7 +120,10 @@ func (t *TCPTransport) Send(to NetAddr, payload []byte) error {
 		From:    t.Addr(),
 		Payload: payload,
 	}
-	return peer.Accept(rpc.Bytes())
+	if err := peer.Accept(rpc.Bytes()); err != nil {
+		return err
+	}
+	return nil
 }
 
 // TODO: maybe add handshake protocol after registering plain connection
@@ -242,6 +246,9 @@ func (p *TCPPeer) Info() *PeerInfo {
 
 // Accept send plain payload to conn, rpc shold be encoded to bytes before send
 func (p *TCPPeer) Accept(payload []byte) error {
+	if err := p.conn.SetDeadline(time.Now().Add(time.Second * 5)); err != nil {
+		return err
+	}
 	n, err := p.conn.Write(payload)
 	if err != nil {
 		return err

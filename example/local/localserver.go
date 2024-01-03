@@ -42,17 +42,20 @@ func MakeNodeAndRun(addr p2p.NetAddr, seed []p2p.NetAddr) {
 			fmt.Printf("[NODE %s] current peers: ", addr)
 			fmt.Printf("len: %d ", tcpNode.PeerCount())
 			for _, info := range tcpNode.Peers() {
-				fmt.Print(*info)
+				if err := tcpNode.Send(info.Addr, []byte("hello")); err != nil {
+					panic(err)
+				}
 			}
-			fmt.Println()
+			fmt.Println("sended to peer")
 		case err := <-errCh:
 			log.Panic(err)
 		case peer := <-peerCh:
+			peer.Start()
 			fmt.Printf("[NODE %s] new peer: %s\n", addr, peer)
 		case info := <-infoCh:
 			fmt.Printf("[NODE %s] info:%s\n", addr, info)
 		case rpc := <-rpcCh:
-			fmt.Printf("[NODE %s] rcp: %v\n", addr, rpc)
+			fmt.Printf("[NODE %s] rcp: %s\n", addr, string(rpc.Payload))
 		}
 	}
 }
