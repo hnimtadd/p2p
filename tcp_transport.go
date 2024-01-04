@@ -110,8 +110,8 @@ func (t *TCPTransport) Broadcast(payload []byte) error {
 // Send wrap payload in RPC and send to given peer
 func (t *TCPTransport) Send(to NetAddr, payload []byte) error {
 	t.mu.Lock()
-	defer t.mu.Unlock()
 	peer, ok := t.peers[to]
+	t.mu.Unlock()
 	if !ok {
 		return ErrPeerNotExisted
 	}
@@ -182,10 +182,10 @@ func (t *TCPTransport) Loop() {
 func (t *TCPTransport) connect(p *TCPPeer) error {
 	t.mu.Lock()
 	_, ok := t.peers[p.Addr()]
+	t.mu.Unlock()
 	if ok {
 		return ErrPeerExisted
 	}
-	t.mu.Unlock()
 	t.mu.RLock()
 	t.peers[p.Addr()] = p
 	t.mu.RUnlock()
@@ -195,9 +195,9 @@ func (t *TCPTransport) connect(p *TCPPeer) error {
 
 func (t *TCPTransport) disconect(p *TCPPeer) {
 	t.mu.RLock()
-	defer t.mu.RUnlock()
-	go p.Stop()
 	delete(t.peers, p.Addr())
+	t.mu.RUnlock()
+	go p.Stop()
 }
 
 // ################### END-TRANSPORT ########################
@@ -246,14 +246,6 @@ func (p *TCPPeer) Info() *PeerInfo {
 // Accept send plain payload to conn, rpc shold be encoded to bytes before send
 func (p *TCPPeer) Accept(payload []byte) error {
 	return Send(p.conn, payload)
-	// n, err := p.conn.Write(payload)
-	// if err != nil {
-	// 	return err
-	// }
-	// if n != len(payload) {
-	// 	return fmt.Errorf("peer: given message with len %d, written %d", len(payload), n)
-	// }
-	return nil
 }
 
 // ################## End-Peer-interface-implement ################
