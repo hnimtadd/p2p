@@ -21,20 +21,20 @@ type TCPTransport struct {
 	addr   NetAddr
 	ln     net.Listener
 	peers  map[NetAddr]*TCPPeer // map nodeId with peer present for that node
-	peerCh chan<- Peer
-	errCh  chan<- error
-	notiCh chan<- string
-	rpcCh  chan<- *RPC
+	peerCh chan Peer
+	errCh  chan error
+	infoCh chan string
+	rpcCh  chan *RPC
 	nodeId string
 	mu     sync.RWMutex
 }
 
 func NewTCPTransport(
 	addr NetAddr,
-	peerCh chan<- Peer,
-	errCh chan<- error,
-	notiCh chan<- string,
-	rpcCh chan<- *RPC,
+	// peerCh chan<- Peer,
+	// errCh chan<- error,
+	// notiCh chan<- string,
+	// rpcCh chan<- *RPC,
 ) (Transport, error) {
 	ln, err := net.Listen("tcp", addr.(string))
 	if err != nil {
@@ -42,12 +42,16 @@ func NewTCPTransport(
 	}
 	transport := &TCPTransport{
 		peers:  make(map[NetAddr]*TCPPeer, 1024),
-		peerCh: peerCh,
-		errCh:  errCh,
-		notiCh: notiCh,
-		rpcCh:  rpcCh,
-		ln:     ln,
-		addr:   addr,
+		peerCh: make(chan Peer, 1024),
+		errCh:  make(chan error, 1024),
+		infoCh: make(chan string, 1024),
+		rpcCh:  make(chan *RPC, 1024),
+		// peerCh: peerCh,
+		// errCh:  errCh,
+		// notiCh: notiCh,
+		// rpcCh:  rpcCh,
+		ln:   ln,
+		addr: addr,
 	}
 	return transport, nil
 }
@@ -60,6 +64,22 @@ func (t *TCPTransport) Addr() NetAddr {
 
 func (t *TCPTransport) Start() {
 	go t.Loop()
+}
+
+func (t *TCPTransport) ConsumePeer() <-chan Peer {
+	return t.peerCh
+}
+
+func (t *TCPTransport) ConsumeRPC() <-chan *RPC {
+	return t.rpcCh
+}
+
+func (t *TCPTransport) ConsumeError() <-chan error {
+	return t.errCh
+}
+
+func (t *TCPTransport) ConsumeInfo() <-chan string {
+	return t.infoCh
 }
 
 func (t *TCPTransport) Peers() []*PeerInfo {
@@ -125,37 +145,35 @@ func (t *TCPTransport) Send(to NetAddr, payload []byte) error {
 	return nil
 }
 
-// TODO: maybe add handshake protocol after registering plain connection
-func (t *TCPTransport) Dial(addr NetAddr) error {
+func (t *TCPTransport) Dial(addr NetAddr) (Peer, error) {
 	conn, err := net.Dial("tcp", addr.(string))
 	if err != nil {
-		return fmt.Errorf("cannot dial to given addr %s, err: %s", addr.(string), err.Error())
+		return nil, fmt.Errorf("cannot dial to given addr %s, err: %s", addr.(string), err.Error())
 	}
 
 	peerInfo, err := TCPHandshake(t, conn)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	peer, err := NewTCPPeer(conn, peerInfo.NodeID, false, t.rpcCh, t.notiCh)
+	peer, err := NewTCPPeer(conn, peerInfo.NodeID, false, t.rpcCh, t.infoCh)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = t.connect(peer)
 	if err != nil {
-		return fmt.Errorf("cannot make peer with addr %s, err: %s", addr.(string), err.Error())
+		return peer, fmt.Errorf("cannot make peer with addr %s, err: %s", addr.(string), err.Error())
 	}
-	return nil
+	return peer, nil
 }
 
 // ###################### End-Interface implement ####################
 
-// TODO: maybe add handshake protocol after registering plain connection
 func (t *TCPTransport) Accept(conn net.Conn) error {
 	peerInfo, err := TCPHandshakeReply(conn, t)
 	if err != nil {
 		return err
 	}
-	peer, err := NewTCPPeer(conn, peerInfo.NodeID, true, t.rpcCh, t.notiCh)
+	peer, err := NewTCPPeer(conn, peerInfo.NodeID, true, t.rpcCh, t.infoCh)
 	if err != nil {
 		return err
 	}

@@ -17,20 +17,20 @@ func main() {
 
 func MakeNodeAndRun(addr p2p.NetAddr, seed []p2p.NetAddr) {
 	fmt.Printf("[NODE %s] Start\n", addr)
-	errCh := make(chan error, 1)
-	peerCh := make(chan p2p.Peer)
-	infoCh := make(chan string)
-	rpcCh := make(chan *p2p.RPC)
 
-	tcpNode, err := p2p.NewTCPTransport(addr, peerCh, errCh, infoCh, rpcCh)
+	tcpNode, err := p2p.NewTCPTransport(addr)
 	if err != nil {
 		log.Panicf("cannot init tcpTransport, err: %v", err)
 	}
+	errCh := tcpNode.ConsumeError()
+	peerCh := tcpNode.ConsumePeer()
+	infoCh := tcpNode.ConsumeInfo()
+	rpcCh := tcpNode.ConsumeRPC()
 	tcpNode.Start()
 
 	go func() {
 		for _, addr := range seed {
-			if err := tcpNode.Dial(addr); err != nil {
+			if _, err := tcpNode.Dial(addr); err != nil {
 				log.Panicf("cannot dial to node, err: %v", err)
 			}
 		}

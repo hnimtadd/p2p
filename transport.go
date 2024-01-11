@@ -4,8 +4,16 @@ type Transport interface {
 	Addr() NetAddr
 	Start()
 	// Dial connect to peer at addr, make handshake and add connection to this node's peer list if success.
-	Dial(addr NetAddr) error
-	// Broadcast wraps payload in RPC and send to all peers.
+	Dial(addr NetAddr) (Peer, error)
+	// ConsumePeer return receive only peerCh of this transport, when this transport accept new per connection, peer will be sent to this channel
+	ConsumePeer() <-chan Peer
+	// ConsumeRPC return rpc receive only channel of this transport, when there are new rpc from the connection, rpc will be sent to this channel
+	ConsumeRPC() <-chan *RPC
+	// ConsumeError return error receive only channel of this tranpsport, when there are error from underlying transport, error will be sent to this channel
+	ConsumeError() <-chan error
+	// ConsumeInfo return string receive only channel of this tranport, when there are any message from tranpoort, message will be sent to this channel
+	ConsumeInfo() <-chan string
+	// Broadcast wraps payload in RPC and send to all connected peers.
 	Broadcast(payload []byte) error
 	// Send wrap payload in RPC and send to given peer.
 	Send(to NetAddr, payload []byte) error
